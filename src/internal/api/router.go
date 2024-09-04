@@ -17,6 +17,7 @@ func NewRouter() *mux.Router {
 	r.HandleFunc("/list", ListContainersHandler).Methods("GET")
 	r.HandleFunc("/github-login", GitHubLoginHandler).Methods("GET")
 	r.HandleFunc("/github-callback", GitHubCallbackHandler).Methods("GET")
+	r.HandleFunc("/github-repos", ListReposHandler).Methods("GET")
 
 	return r
 }

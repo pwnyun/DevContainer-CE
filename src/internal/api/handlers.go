@@ -214,7 +214,11 @@ func GitHubCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 假设 userID 是通过某种方式识别的，这里简化处理
-	userID := "example-user"
+	userID, err := auth.GetUserIDFromToken(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	auth.SaveToken(userID, token)
 
 	// 告知用户登录成功

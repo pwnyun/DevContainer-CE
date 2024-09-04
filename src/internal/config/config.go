@@ -13,7 +13,7 @@ type Config struct {
 
 func Load() (*Config, error) {
 	return &Config{
-		Listen:        getEnv("LISTEN_ADDRESS", "127.0.0.1:3030"),
+		Listen:        getEnv("LISTEN_ADDRESS", "0.0.0.0:30030"),
 		ContainerURL:  getEnv("CONTAINER_URL", "http://ctf.qlu.edu.cn:{port}/?tkn={token}"),
 		ImageName:     getEnv("IMAGE_NAME", "gitpod/openvscode-server"),
 		MaxContainers: 4, // 默认值为 4，可根据需要调整

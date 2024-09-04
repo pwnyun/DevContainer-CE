@@ -9,6 +9,8 @@ import (
 	"log"
 	"strings"
 
+	"io"
+
 	"github.com/AethoceSora/DevContainer/src/internal/auth"
 	"github.com/AethoceSora/DevContainer/src/internal/config"
 	"github.com/AethoceSora/DevContainer/src/internal/k8s"
@@ -188,6 +190,64 @@ func ListContainersHandler(w http.ResponseWriter, r *http.Request) {
 	// 将结果编码为JSON并返回
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(userContainers); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func GitHubLoginHandler(w http.ResponseWriter, r *http.Request) {
+	url := auth.GetGitHubLoginURL()
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+// 处理 GitHub OAuth 回调
+func GitHubCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	state := r.FormValue("state")
+	code := r.FormValue("code")
+
+	// 使用 auth 包中的 ExchangeCodeForToken 函数来获取 token
+	token, err := auth.ExchangeCodeForToken(code, state)
+	if err != nil {
+		log.Printf("Code exchange failed: %s", err.Error())
+		http.Error(w, "Code exchange failed", http.StatusInternalServerError)
+		return
+	}
+
+	// 假设 userID 是通过某种方式识别的，这里简化处理
+	userID := "example-user"
+	auth.SaveToken(userID, token)
+
+	// 告知用户登录成功
+	w.Write([]byte("Login successful, now you can list your repositories at /repos"))
+}
+
+func ListReposHandler(w http.ResponseWriter, r *http.Request) {
+	// 从请求头中的JWT获取userID
+	userID, err := auth.GetUserIDFromToken(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// 从内存中获取 token
+	token, ok := auth.GetToken(userID)
+	if !ok {
+		http.Error(w, "Token not found", http.StatusUnauthorized)
+		return
+	}
+
+	// 使用 token 获取用户的仓库列表
+	client := auth.GithubOauthConfig.Client(r.Context(), token)
+	resp, err := client.Get("https://api.github.com/user/repos")
+	if err != nil {
+		http.Error(w, "Failed to get repositories", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	// 将结果编码为JSON并返回
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := io.Copy(w, resp.Body); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
